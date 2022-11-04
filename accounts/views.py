@@ -4,6 +4,8 @@ from .forms import CustomUserForm, CustomUpdateForm
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import AuthenticationForm
+from django.contrib import messages
+from django.contrib.auth import authenticate
 # Create your views here.
 
 def signup(request):
@@ -30,17 +32,27 @@ def delete(request, pk):
     return redirect('accounts:any')
 
 def log_in(request):
+    if request.user.is_authenticated:
+        return redirect('restaurants:index')
     if request.method == 'POST':
-        login_form = AuthenticationForm(request, data=request.POST)
-        if login_form.is_valid():
-            login(request, login_form.get_user())
-            return redirect(request.GET.get('next') or 'restaurants:index')
-    else:
-        login_form = AuthenticationForm()
-    context = {
-        'login_form' : login_form
-    }
-    return render(request, 'accounts/login.html', context)
+        username = request.POST['username'].lower()
+        password = request.POST['password1']
+
+        try:
+            user = get_user_model().objects.get(username=username)
+        except:
+            messages.error(request, 'username does not exist!')
+        
+
+        user = authenticate(request, username=username, password=password)
+
+        if user is not None:
+            login(request, user)
+            return redirect('accounts:login')
+        else:
+            messages.error(request, 'username or password is incorrect!')
+
+    return render(request, 'accounts/login.html')
 
 @login_required
 def log_out(request):
